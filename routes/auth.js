@@ -1,39 +1,3 @@
-// const express = require('express');
-// const { google } = require('googleapis');
-// const router = express.Router();
-// require('dotenv').config();
-
-// const oAuth2Client = new google.auth.OAuth2(
-//   process.env.CLIENT_ID,
-//   process.env.CLIENT_SECRET,
-//   process.env.REDIRECT_URI
-// );
-
-// module.exports = (saveTokens) => {
-//   router.post('/login', (req, res) => {
-//     const authUrl = oAuth2Client.generateAuthUrl({
-//       access_type: 'offline',
-//       scope: ['https://www.googleapis.com/auth/gmail.readonly'],
-//     });
-//     res.send({ url: authUrl });
-//   });
-
-//   router.get('/callback', async (req, res) => {
-//     const code = req.query.code;
-//     const userId = req.query.userId;  // Assuming userId is passed as a query parameter
-//     try {
-//       const { tokens: newTokens } = await oAuth2Client.getToken(code);
-//       oAuth2Client.setCredentials(newTokens);
-//       await saveTokens(userId, newTokens);  // Save tokens with userId
-//       res.send('Authentication successful! You can close this window.');
-//     } catch (error) {
-//       res.status(500).send({ error: 'Failed to authenticate' });
-//     }
-//   });
-
-//   return router;
-// };
-
 const express = require('express');
 const { google } = require('googleapis');
 const jwt = require('jsonwebtoken');
