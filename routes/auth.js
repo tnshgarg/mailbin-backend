@@ -1,10 +1,10 @@
-const express = require('express');
-const { google } = require('googleapis');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Token = require('../models/Token');
+const express = require("express");
+const { google } = require("googleapis");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+const Token = require("../models/Token");
 const router = express.Router();
-require('dotenv').config();
+require("dotenv").config();
 
 const oAuth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
@@ -13,51 +13,48 @@ const oAuth2Client = new google.auth.OAuth2(
 );
 
 const generateAuthToken = (user) => {
-  const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_SECRET);
+  const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_SECRET, {
+    expiresIn: "365d",
+  });
   return token;
 };
 
-// Google OAuth login
-router.get('/login', (req, res) => {
+router.get("/login", (req, res) => {
   const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/userinfo.profile'],
+    access_type: "offline",
+    scope: [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ],
   });
   res.send({ url: authUrl });
 });
 
-// Google OAuth callback
-router.get('/callback', async (req, res) => {
+router.get("/callback", async (req, res) => {
   const code = req.query.code;
 
   try {
-    console.log(1)
     const { tokens } = await oAuth2Client.getToken(code);
     oAuth2Client.setCredentials(tokens);
 
-    // Get user email from tokens
-    console.log(2)
-    const userInfo = await google.oauth2({ version: 'v2', auth: oAuth2Client }).userinfo.get();
-    const id = userInfo.data.id;
-    console.log(3)
-    if (!id) {
-      throw new Error('User id not found in Google profile.');
+    const userInfo = await google
+      .oauth2({ version: "v2", auth: oAuth2Client })
+      .userinfo.get();
+    console.log("userinfo: ", userInfo);
+    const email = userInfo.data.email;
+    if (!email) {
+      throw new Error("User email not found in Google profile.");
     }
 
-    // Check if the user already exists
-    console.log(4)
-    let user = await User.findOne({ id });
-    console.log("user: ", user)
+    let user = await User.findOne({ email });
+    console.log("user: ", user);
 
     if (!user) {
-      console.log(41)
-      // Create a new user if not found
-      user = new User({ id });
+      user = new User({ email });
       await user.save();
     }
 
-    // Save/update tokens for the user
-    console.log(5)
     await Token.findOneAndUpdate(
       { userId: user._id },
       { ...tokens, userId: user._id },
@@ -65,16 +62,12 @@ router.get('/callback', async (req, res) => {
     );
 
     // Generate JWT token and send it in response
-    console.log(6)
     const authToken = generateAuthToken(user);
-    console.log("authtoken: ", authToken)
-    console.log("user: ", user)
-    res.send({ user, token: authToken });
+    res.send({ user, token: authToken, email: email });
   } catch (error) {
-    console.error('Google OAuth callback error:', error);
-    res.status(500).send({ error: 'Failed to authenticate' });
+    console.error("Google OAuth callback error:", error);
+    res.status(500).send({ error: "Failed to authenticate" });
   }
 });
-
 
 module.exports = router;
