@@ -6,6 +6,12 @@ const axios = require("axios");
 const auth = require("../middlewares/auth");
 require("dotenv").config();
 
+const extractEmail = (inputString) => {
+  const emailPattern = /<([^>]+)>/;
+  const match = inputString.match(emailPattern);
+  return match ? match[1] : null;
+};
+
 const extractDomainFromEmailString = (emailString) => {
   const emailMatch = emailString.match(/<([^>]+)>/);
   if (emailMatch && emailMatch[1]) {
@@ -34,8 +40,10 @@ const extractCompanyName = (email) => {
 const groupEmailsByDomain = (emails) => {
   const domainMap = new Map();
   emails.forEach((email) => {
-    console.log("Email: ", email);
+    // if (!emails.unsubscribeLink) return;
     const mainDomain = extractDomainFromEmailString(email.from);
+    const emailId = extractEmail(email.from);
+    console.log("EmailId: ", emailId);
     if (mainDomain) {
       if (!domainMap.has(mainDomain)) {
         domainMap.set(mainDomain, {
@@ -43,6 +51,7 @@ const groupEmailsByDomain = (emails) => {
           companyName: extractCompanyName(email.from),
           companyLogo: `https://logo.clearbit.com/${mainDomain}`,
           unsubscribeLink: email.unsubscribeLink,
+          emailId: emailId,
         });
       } else {
         domainMap.get(mainDomain).emails.push(email);
@@ -76,8 +85,7 @@ const fetchEmails = async (auth) => {
     );
     const from = fromHeader ? fromHeader.value : "";
     const unsubscribeLink = unsubscribeHeader ? unsubscribeHeader.value : "";
-    console.log("message: ", msg);
-    emails.push({ from, unsubscribeLink });
+    if (unsubscribeLink) emails.push({ from, unsubscribeLink });
   }
 
   return emails;
@@ -85,14 +93,15 @@ const fetchEmails = async (auth) => {
 
 router.get("/newsletters", auth, async (req, res) => {
   try {
-    const token = await Token.findOne({ userId: req.user._id });
+    // const token = await Token.findOne({ userId: req.user._id });
+    const token = req.token.iss;
     if (!token) {
       return res.status(401).send({ error: "User not authenticated" });
     }
     const oAuth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
+      process.env.IOS_CLIENT_ID
+      // process.env.CLIENT_SECRET,
+      // process.env.REDIRECT_URI
     );
     oAuth2Client.setCredentials(token);
 

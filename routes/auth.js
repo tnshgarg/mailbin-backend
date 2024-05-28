@@ -42,16 +42,16 @@ router.get("/callback", async (req, res) => {
       .oauth2({ version: "v2", auth: oAuth2Client })
       .userinfo.get();
     console.log("userinfo: ", userInfo);
-    const email = userInfo.data.email;
-    if (!email) {
-      throw new Error("User email not found in Google profile.");
+    const id = userInfo.data.id;
+    if (!id) {
+      throw new Error("User id not found in Google profile.");
     }
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ id });
     console.log("user: ", user);
 
     if (!user) {
-      user = new User({ email });
+      user = new User({ id });
       await user.save();
     }
 
@@ -63,7 +63,7 @@ router.get("/callback", async (req, res) => {
 
     // Generate JWT token and send it in response
     const authToken = generateAuthToken(user);
-    res.send({ user, token: authToken, email: email });
+    res.send({ user, token: authToken, id: id });
   } catch (error) {
     console.error("Google OAuth callback error:", error);
     res.status(500).send({ error: "Failed to authenticate" });
